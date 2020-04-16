@@ -18,3 +18,22 @@ This is a work in progress and some of the features to be added are:
 - load a configuration file where to store common configuration
 - Tensorflow image tagging
 - update XMP or EXIF metadata with tags and new date in case of time change.
+
+## Building the application
+
+`go build -o photo-organizer main.go rename-and-chtime.go `
+
+## Examples
+
+Get help
+
+`photo-organizer --help`
+
+Rename all image files on the folder `workdir` and add the suffix "weekend-trip" to it.
+
+`photo-organizer --suffix "weekend-trip" workdir`
+
+Rename all image files on the folder `workdir` and change the date by minus 1h to adjust to the real time we toke the picture.
+
+`photo-organizer --offset -1h  workdir`
+
