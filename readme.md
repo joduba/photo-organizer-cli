@@ -21,13 +21,13 @@ This is a work in progress and some of the features to be added are:
 
 ## Building the application
 
-`go build -o photo-organizer main.go rename-and-chtime.go `
+`go build -o photoOrganizer main.go rename-and-chtime.go `
 
 ## Examples
 
 Get help
 
-`photo-organizer --help`
+`photoOrganizer --help`
 
 Rename all image files on the folder `workdir` and add the suffix "weekend-trip" to it.
 
