@@ -1,4 +1,5 @@
-# Those are a bunch of code snipets from other repos and example that I may want to use some day
+# Code snippets & references
+Those are a bunch of code snipets from other repos and example that I may want to use some day
 
 ## From "github.com/rwcarlsen/goexif/exif"
 
