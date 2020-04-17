@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -19,18 +20,24 @@ var extensions = map[string]bool{
 }
 
 var changed = 0
-var suffix = ""
+var suffix, basedir, operation string
 var timeOffset time.Duration
 var classify = false
 var dstFolders map[string]bool
-var basedir = ""
+var copyPhotos = true
 
-func doPhotoOperations(f, s string, o int, c bool, b string) (int, error) {
+func doPhotoOperations(f, s string, o int, c bool, b string, cp bool) (int, error) {
 
 	fmt.Printf("-- Renaming images in folder '%s' with suffix [%s] and offset [%d]...\n", f, s, o)
 	timeOffset = time.Duration(o) * time.Hour
 	suffix = s
 	basedir = b
+	copyPhotos = cp
+	if copyPhotos {
+		operation = "copy"
+	} else {
+		operation = "rename"
+	}
 
 	classify = c
 	if classify {
@@ -90,16 +97,23 @@ func doRenameAndChangeTime(path string, fileInfo os.FileInfo, err error) error {
 
 	// No need to rename if the new name == oldname
 	if path != newName {
-		if err = os.Rename(path, newName); err != nil {
-			return fmt.Errorf("can't rename the file %s\n %v", path, err)
+		if copyPhotos == true {
+			if err = copyFiles(path, newName); err != nil {
+				return fmt.Errorf("can't move the file %s\n %v", path, err)
+			}
+		} else {
+			if err = os.Rename(path, newName); err != nil {
+				return fmt.Errorf("can't rename the file %s\n %v", path, err)
+			}
 		}
+
 	}
 
 	if err := os.Chtimes(newName, pDateTime, pDateTime); err != nil {
 		return fmt.Errorf("change time issue for file: %s\n %v", path, err)
 	}
 	changed++
-	log.Printf("✓ Renamed from %s to: %s and CHTimes to %v\n", path, newName, pDateTime)
+	log.Printf("✓ %s from %s to: %s and CHTimes to %v\n", operation, path, newName, pDateTime)
 
 	return nil
 }
@@ -140,10 +154,30 @@ func destinationPath(d time.Time) (string, error) {
 		return f, nil
 	}
 
-	if err := os.MkdirAll(f, 0777); err != nil {
+	if err := os.MkdirAll(f, 0775); err != nil {
 		return "", fmt.Errorf("x Could not create folder: %s", f)
 	}
 	dstFolders[f] = true
 
 	return f, nil
+}
+
+func copyFiles(src, dst string) error {
+	from, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("x Could not open source file: %s, %v", src, err)
+	}
+	defer from.Close()
+
+	to, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0664)
+	if err != nil {
+		return fmt.Errorf("x Could not open destination file: %s, %v", src, err)
+	}
+	defer to.Close()
+
+	_, err = io.Copy(to, from)
+	if err != nil {
+		return fmt.Errorf("x Could not copy source file to destination: %s --> %s, %v", src, dst, err)
+	}
+	return nil
 }

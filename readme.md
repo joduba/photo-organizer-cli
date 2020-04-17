@@ -40,3 +40,7 @@ Rename all image files on the folder `workdir` and change the date by minus 1h t
 Create a new folder structure under the folder `basedir`, organized by `year/year-month-day-suffix` and rename and move all image files present at the `workdir` folder. If we ommit the basedir, it will create a folder called `out`.
 
 `photo-organizer --classify --basedir "myPhotos" --suffix "red-moon" workdir`
+
+If we want to copy the files instead of moving them, we shall add the `--copy` flag
+
+`photo-organizer --classify --basedir "myPhotos" --copy --suffix "red-moon" workdir`
