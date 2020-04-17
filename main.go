@@ -16,16 +16,7 @@ func main() {
 	log.Println("photo: Starting")
 	flag.IntVar(&timeOffset, "offset", 0, "Number of hours to be added (or removed) to the current time")
 	flag.StringVar(&suffix, "suffix", "", "Text to be added to enrich the name of the files")
-	flag.StringVar(&cpuprofile, "pprof", "", "write cpu profile to file")
-	flag.StringVar(&cputrace, "trace", "", "write cpu trace to file")
 	flag.Parse()
-
-	if cpuprofile != "" {
-		cpuProfiling(cpuprofile)
-	}
-	if cputrace != "" {
-		cpuTracing(cputrace)
-	}
 
 	if flag.Arg(0) == "" {
 		log.Fatal("no folder provided")
