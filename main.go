@@ -7,17 +7,19 @@ import (
 	"log"
 	"os"
 	"runtime/pprof"
+	"runtime/trace"
 	"time"
 )
 
 func main() {
-	var suffix, cpuprofile string
+	var suffix, cpuprofile, cputrace string
 	var timeOffset int
 
 	log.Println("photo: Starting")
 	flag.IntVar(&timeOffset, "offset", 0, "Number of hours to be added (or removed) to the current time")
 	flag.StringVar(&suffix, "suffix", "", "Text to be added to enrich the name of the files")
 	flag.StringVar(&cpuprofile, "pprof", "", "write cpu profile to file")
+	flag.StringVar(&cputrace, "trace", "", "write cpu trace to file")
 	flag.Parse()
 
 	if flag.Arg(0) == "" {
@@ -27,6 +29,10 @@ func main() {
 
 	if cpuprofile != "" {
 		cpuProfiling(cpuprofile)
+	}
+
+	if cputrace != "" {
+		cpuTracing(cputrace)
 	}
 
 	log.Printf("-- Parameters: suffix [%s], offset [%d] folder [%v]\n", suffix, timeOffset, flag.Arg(0))
@@ -58,4 +64,15 @@ func cpuProfiling(fn string) {
 	}
 	pprof.StartCPUProfile(f)
 	defer pprof.StopCPUProfile()
+}
+
+func cpuTracing(fn string) {
+
+	log.Println("Starting Tracing")
+	f, err := os.Create(fn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	trace.Start(f)
+	defer trace.Stop()
 }
