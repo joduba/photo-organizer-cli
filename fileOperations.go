@@ -31,7 +31,9 @@ func doPhotoOperations(f, s string, o int, c bool, b string, cp bool) (int, erro
 	fmt.Printf("-- Renaming images in folder '%s' with suffix [%s] and offset [%d]...\n", f, s, o)
 	timeOffset = time.Duration(o) * time.Hour
 	suffix = s
-	basedir = b
+	if b != "" {
+		basedir = b + "/"
+	}
 	copyPhotos = cp
 	if copyPhotos {
 		operation = "copy"
@@ -40,11 +42,9 @@ func doPhotoOperations(f, s string, o int, c bool, b string, cp bool) (int, erro
 	}
 
 	classify = c
-	if classify {
-		dstFolders = make(map[string]bool)
-	}
+	dstFolders = make(map[string]bool)
 
-	err := filepath.Walk(f, doRenameAndChangeTime)
+	err := filepath.Walk(f, doFileOperations)
 	if err != nil {
 		return changed, err
 	}
@@ -54,7 +54,7 @@ func doPhotoOperations(f, s string, o int, c bool, b string, cp bool) (int, erro
 
 }
 
-func doRenameAndChangeTime(path string, fileInfo os.FileInfo, err error) error {
+func doFileOperations(path string, fileInfo os.FileInfo, err error) error {
 
 	if err != nil {
 		return fmt.Errorf("an error ocurred while accessing a path %q:\n %v", path, err)
@@ -82,7 +82,7 @@ func doRenameAndChangeTime(path string, fileInfo os.FileInfo, err error) error {
 	}
 
 	pDateTime := fileInfo.ModTime()
-	if exif, err := exif.Decode(f); err != nil {
+	if exif, err := exif.Decode(f); err != nil && exif != nil {
 		pDateTime, _ = exif.DateTime()
 	}
 
@@ -95,7 +95,7 @@ func doRenameAndChangeTime(path string, fileInfo os.FileInfo, err error) error {
 		return fmt.Errorf("can find a new name for %s\n %v", path, err)
 	}
 
-	// No need to rename if the new name == oldname
+	// No need to rename/copy if the new name == oldname
 	if path != newName {
 		if copyPhotos == true {
 			if err = copyFiles(path, newName); err != nil {
@@ -125,12 +125,10 @@ func findName(path, name string, pDateTime time.Time, suffix string) (string, er
 		t += "-" + suffix
 	}
 	t += filepath.Ext(name)
-	dstPath := path
+	dstPath := ""
 	var err error
-	if classify == true {
-		if dstPath, err = destinationPath(pDateTime); err != nil {
-			return "", err
-		}
+	if dstPath, err = destinationPath(pDateTime, path); err != nil {
+		return "", err
 	}
 	for c := 1; true; c++ {
 		new := dstPath + "/" + fmt.Sprintf(t, c)
@@ -144,12 +142,20 @@ func findName(path, name string, pDateTime time.Time, suffix string) (string, er
 	return "", fmt.Errorf("x Could not find available filename for: %s", name)
 }
 
-func destinationPath(d time.Time) (string, error) {
+func destinationPath(d time.Time, path string) (string, error) {
 
-	f := basedir + "/" + d.Format("2006/2006-01-02")
-	if suffix != "" {
-		f += "-" + suffix
+	f := basedir + path
+	if classify == true {
+		f = basedir + d.Format("2006/2006-01-02")
+		if suffix != "" {
+			f += "-" + suffix
+		}
+	} else {
+		if basedir == "out/" {
+			return path, nil
+		}
 	}
+
 	if _, ok := dstFolders[f]; ok {
 		return f, nil
 	}
