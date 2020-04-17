@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	var suffix, cpuprofile, cputrace string
+	var suffix string
 	var timeOffset int
 
 	log.Println("photo: Starting")
