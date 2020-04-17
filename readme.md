@@ -21,7 +21,7 @@ This is a work in progress and some of the features to be added are:
 
 ## Building the application
 
-`go build -o photoOrganizer main.go rename-and-chtime.go `
+`go build -o photoOrganizer main.go rename-and-chtime.go`
 
 ## Examples
 
@@ -35,5 +35,8 @@ Rename all image files on the folder `workdir` and add the suffix "weekend-trip"
 
 Rename all image files on the folder `workdir` and change the date by minus 1h to adjust to the real time we toke the picture.
 
-`photo-organizer --offset -1h  workdir`
+`photo-organizer --offset -1h workdir`
 
+Create a new folder structure under the folder `basedir`, organized by `year/year-month-day-suffix` and rename and move all image files present at the `workdir` folder. If we ommit the basedir, it will create a folder called `out`.
+
+`photo-organizer --classify --basedir "myPhotos" --suffix "red-moon" workdir`

@@ -10,12 +10,15 @@ import (
 )
 
 func main() {
-	var suffix string
+	var suffix, basedir string
 	var timeOffset int
+	var classify bool
 
 	log.Println("photo: Starting")
 	flag.IntVar(&timeOffset, "offset", 0, "Number of hours to be added (or removed) to the current time")
 	flag.StringVar(&suffix, "suffix", "", "Text to be added to enrich the name of the files")
+	flag.BoolVar(&classify, "classify", false, "if set to true, it will organize the pictures in folders by year/day")
+	flag.StringVar(&basedir, "basedir", "out", "base folder where move the files and folders in case of classify")
 	flag.Parse()
 
 	if flag.Arg(0) == "" {
@@ -27,7 +30,7 @@ func main() {
 
 	startTime := time.Now()
 
-	c, err := renameAndChangeTime(flag.Arg(0), suffix, timeOffset)
+	c, err := doPhotoOperations(flag.Arg(0), suffix, timeOffset, classify, basedir)
 	endTime := time.Now()
 	etime := endTime.Sub(startTime)
 

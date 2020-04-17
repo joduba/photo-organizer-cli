@@ -21,12 +21,21 @@ var extensions = map[string]bool{
 var changed = 0
 var suffix = ""
 var timeOffset time.Duration
+var classify = false
+var dstFolders map[string]bool
+var basedir = ""
 
-func renameAndChangeTime(f, s string, o int) (int, error) {
+func doPhotoOperations(f, s string, o int, c bool, b string) (int, error) {
 
 	fmt.Printf("-- Renaming images in folder '%s' with suffix [%s] and offset [%d]...\n", f, s, o)
 	timeOffset = time.Duration(o) * time.Hour
 	suffix = s
+	basedir = b
+
+	classify = c
+	if classify {
+		dstFolders = make(map[string]bool)
+	}
 
 	err := filepath.Walk(f, doRenameAndChangeTime)
 	if err != nil {
@@ -102,14 +111,39 @@ func findName(path, name string, pDateTime time.Time, suffix string) (string, er
 		t += "-" + suffix
 	}
 	t += filepath.Ext(name)
-	for c := 1; true; c++ {
-		new := fmt.Sprintf(t, c)
-		if name == new {
-			return path + "/" + new, nil
+	dstPath := path
+	var err error
+	if classify == true {
+		if dstPath, err = destinationPath(pDateTime); err != nil {
+			return "", err
 		}
-		if _, err := os.Stat(path + "/" + new); err != nil {
-			return path + "/" + new, nil
+	}
+	for c := 1; true; c++ {
+		new := dstPath + "/" + fmt.Sprintf(t, c)
+		if path+"/"+name == new {
+			return new, nil
+		}
+		if _, err := os.Stat(new); err != nil {
+			return new, nil
 		}
 	}
 	return "", fmt.Errorf("x Could not find available filename for: %s", name)
+}
+
+func destinationPath(d time.Time) (string, error) {
+
+	f := basedir + "/" + d.Format("2006/2006-01-02")
+	if suffix != "" {
+		f += "-" + suffix
+	}
+	if _, ok := dstFolders[f]; ok {
+		return f, nil
+	}
+
+	if err := os.MkdirAll(f, 0777); err != nil {
+		return "", fmt.Errorf("x Could not create folder: %s", f)
+	}
+	dstFolders[f] = true
+
+	return f, nil
 }
