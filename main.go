@@ -6,8 +6,6 @@ import (
 	"flag"
 	"log"
 	"os"
-	"runtime/pprof"
-	"runtime/trace"
 	"time"
 )
 
@@ -22,20 +20,19 @@ func main() {
 	flag.StringVar(&cputrace, "trace", "", "write cpu trace to file")
 	flag.Parse()
 
+	if cpuprofile != "" {
+		cpuProfiling(cpuprofile)
+	}
+	if cputrace != "" {
+		cpuTracing(cputrace)
+	}
+
 	if flag.Arg(0) == "" {
 		log.Fatal("no folder provided")
 		os.Exit(1)
 	}
 
-	if cpuprofile != "" {
-		cpuProfiling(cpuprofile)
-	}
-
-	if cputrace != "" {
-		cpuTracing(cputrace)
-	}
-
-	log.Printf("-- Parameters: suffix [%s], offset [%d] folder [%v]\n", suffix, timeOffset, flag.Arg(0))
+	log.Printf("-- Parameters: picture suffix [%s], time offset [%d Hours] folder [%v]\n", suffix, timeOffset, flag.Arg(0))
 
 	startTime := time.Now()
 
@@ -53,26 +50,4 @@ func main() {
 	}
 	log.Printf("Successfully renamed %d photos in %s\n", c, etime)
 
-}
-
-func cpuProfiling(fn string) {
-
-	log.Println("Starting profiling")
-	f, err := os.Create(fn)
-	if err != nil {
-		log.Fatal(err)
-	}
-	pprof.StartCPUProfile(f)
-	defer pprof.StopCPUProfile()
-}
-
-func cpuTracing(fn string) {
-
-	log.Println("Starting Tracing")
-	f, err := os.Create(fn)
-	if err != nil {
-		log.Fatal(err)
-	}
-	trace.Start(f)
-	defer trace.Stop()
 }
