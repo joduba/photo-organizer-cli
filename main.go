@@ -12,26 +12,42 @@ import (
 func main() {
 	var suffix, basedir string
 	var timeOffset int
-	var classify, copyPhotos bool
+	var classify bool
 
 	log.Println("photo: Starting")
 	flag.IntVar(&timeOffset, "offset", 0, "Number of hours to be added (or removed) to the current time")
 	flag.StringVar(&suffix, "suffix", "", "Text to be added to enrich the name of the files")
 	flag.BoolVar(&classify, "classify", false, "if set to true, it will organize the pictures in folders by year/day")
-	flag.StringVar(&basedir, "basedir", "out", "base folder where move the files and folders in case of classify")
-	flag.BoolVar(&copyPhotos, "copy", false, "if set to true, it copy the files instead of moving them")
+	flag.StringVar(&basedir, "basedir", "", "base folder where move the files and folders in case of classify default is inside the work folder")
 	flag.Parse()
 
-	if flag.Arg(0) == "" {
+	startTime := time.Now()
+	log.Printf("-- Parameters: picture suffix [%s], time offset [%d Hours] folder [%v] baseDir [%s]\n", suffix, timeOffset, flag.Arg(0), basedir)
+
+	folder := flag.Arg(0)
+	if folder == "" {
 		log.Fatal("no folder provided")
 		os.Exit(1)
 	}
+	fileInfo, err := os.Lstat(folder)
+	if err != nil {
+		log.Fatal("can't STAT the folder")
+		os.Exit(2)
+	}
+	if !fileInfo.IsDir() {
+		log.Fatal("The provided argument is not a folder")
+		os.Exit(3)
+	}
 
-	log.Printf("-- Parameters: picture suffix [%s], time offset [%d Hours] folder [%v]\n", suffix, timeOffset, flag.Arg(0))
+	if classify == false && basedir != "" {
+		log.Printf("Igonring -basedir '%s', it's only used when working with -classify\n", basedir)
+	}
 
-	startTime := time.Now()
+	if basedir == "" && classify == true {
+		basedir = folder
+	}
 
-	c, err := doPhotoOperations(flag.Arg(0), suffix, timeOffset, classify, basedir, copyPhotos)
+	c, err := doFolderRename(folder, suffix, timeOffset, classify, basedir)
 	endTime := time.Now()
 	etime := endTime.Sub(startTime)
 

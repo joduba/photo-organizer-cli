@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -24,9 +23,8 @@ var suffix, basedir, operation string
 var timeOffset time.Duration
 var classify = false
 var dstFolders map[string]bool
-var copyPhotos = true
 
-func doPhotoOperations(f, s string, o int, c bool, b string, cp bool) (int, error) {
+func doFolderRename(f, s string, o int, c bool, b string) (int, error) {
 
 	fmt.Printf("-- Renaming images in folder '%s' with suffix [%s] and offset [%d]...\n", f, s, o)
 	timeOffset = time.Duration(o) * time.Hour
@@ -34,17 +32,11 @@ func doPhotoOperations(f, s string, o int, c bool, b string, cp bool) (int, erro
 	if b != "" {
 		basedir = b + "/"
 	}
-	copyPhotos = cp
-	if copyPhotos {
-		operation = "copy"
-	} else {
-		operation = "rename"
-	}
 
 	classify = c
 	dstFolders = make(map[string]bool)
 
-	err := filepath.Walk(f, doFileOperations)
+	err := filepath.Walk(f, doPhotoRename)
 	if err != nil {
 		return changed, err
 	}
@@ -54,7 +46,7 @@ func doPhotoOperations(f, s string, o int, c bool, b string, cp bool) (int, erro
 
 }
 
-func doFileOperations(path string, fileInfo os.FileInfo, err error) error {
+func doPhotoRename(path string, fileInfo os.FileInfo, err error) error {
 
 	if err != nil {
 		return fmt.Errorf("an error ocurred while accessing a path %q:\n %v", path, err)
@@ -82,8 +74,10 @@ func doFileOperations(path string, fileInfo os.FileInfo, err error) error {
 	}
 
 	pDateTime := fileInfo.ModTime()
-	if exif, err := exif.Decode(f); err != nil && exif != nil {
+	if exif, err := exif.Decode(f); err == nil && exif != nil {
 		pDateTime, _ = exif.DateTime()
+	} else {
+		log.Printf("-- Weird, the picture %s does not have a valid exif, using fileInfo.ModTime instead \n", path)
 	}
 
 	if timeOffset != 0 {
@@ -94,19 +88,11 @@ func doFileOperations(path string, fileInfo os.FileInfo, err error) error {
 	if err != nil {
 		return fmt.Errorf("can find a new name for %s\n %v", path, err)
 	}
-
-	// No need to rename/copy if the new name == oldname
+	// No need to rename if the new name == oldname
 	if path != newName {
-		if copyPhotos == true {
-			if err = copyFiles(path, newName); err != nil {
-				return fmt.Errorf("can't move the file %s\n %v", path, err)
-			}
-		} else {
-			if err = os.Rename(path, newName); err != nil {
-				return fmt.Errorf("can't rename the file %s\n %v", path, err)
-			}
+		if err = os.Rename(path, newName); err != nil {
+			return fmt.Errorf("can't rename the file %s\n %v", path, err)
 		}
-
 	}
 
 	if err := os.Chtimes(newName, pDateTime, pDateTime); err != nil {
@@ -144,16 +130,12 @@ func findName(path, name string, pDateTime time.Time, suffix string) (string, er
 
 func destinationPath(d time.Time, path string) (string, error) {
 
-	f := basedir + path
-	if classify == true {
-		f = basedir + d.Format("2006/2006-01-02")
-		if suffix != "" {
-			f += "-" + suffix
-		}
-	} else {
-		if basedir == "out/" {
-			return path, nil
-		}
+	if classify != true {
+		return path, nil
+	}
+	f := basedir + d.Format("2006/2006-01-02")
+	if suffix != "" {
+		f += "-" + suffix
 	}
 
 	if _, ok := dstFolders[f]; ok {
@@ -166,24 +148,4 @@ func destinationPath(d time.Time, path string) (string, error) {
 	dstFolders[f] = true
 
 	return f, nil
-}
-
-func copyFiles(src, dst string) error {
-	from, err := os.Open(src)
-	if err != nil {
-		return fmt.Errorf("x Could not open source file: %s, %v", src, err)
-	}
-	defer from.Close()
-
-	to, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, 0664)
-	if err != nil {
-		return fmt.Errorf("x Could not open destination file: %s, %v", src, err)
-	}
-	defer to.Close()
-
-	_, err = io.Copy(to, from)
-	if err != nil {
-		return fmt.Errorf("x Could not copy source file to destination: %s --> %s, %v", src, dst, err)
-	}
-	return nil
 }
