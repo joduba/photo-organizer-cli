@@ -48,7 +48,7 @@ func main() {
 		basedir = folder
 	}
 
-	if auto == true {
+	if auto == true && suffix != "" {
 		suffix = folder
 	}
 
