@@ -12,13 +12,12 @@ import (
 func main() {
 	var suffix, basedir string
 	var timeOffset int
-	var classify, auto bool
+	var classify bool
 
 	log.Println("photo: Starting")
 	flag.IntVar(&timeOffset, "offset", 0, "Number of hours to be added (or removed) to the current time")
 	flag.StringVar(&suffix, "suffix", "", "Text to be added to enrich the name of the files")
 	flag.BoolVar(&classify, "classify", false, "If set to true, it will organize the pictures in folders by year/day")
-	flag.BoolVar(&auto, "auto", false, "If set to true, will use the folder name as Suffix")
 	flag.StringVar(&basedir, "basedir", "", "Base folder where move the files and folders if classify flag is set. Default is inside the work folder")
 	flag.Parse()
 
@@ -46,10 +45,6 @@ func main() {
 
 	if basedir == "" && classify == true {
 		basedir = folder
-	}
-
-	if auto == true && suffix != "" {
-		suffix = folder
 	}
 
 	c, err := doFolderRename(folder, suffix, timeOffset, classify, basedir)
