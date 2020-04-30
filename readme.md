@@ -36,7 +36,7 @@ Rename all image files on the folder `workdir` and add the suffix "weekend-trip"
 
 Rename all image files on the folder `workdir` and change the date by minus 1h to adjust to the real time we toke the picture.
 
-`photo-organizer -offset -1h workdir`
+`photo-organizer -offset -1 workdir`
 
 Create a new folder structure under the folder `basedir`, organized by `year/year-month-day-suffix` and rename and move all image files present at the `workdir` folder. If we ommit the basedir, it will create a folder called `out`.
 
