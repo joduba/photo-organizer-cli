@@ -23,7 +23,7 @@ var suffix, basedir string
 var timeOffset time.Duration
 var classify = false
 var dstFolders map[string]bool
-var defaultDate time.Time
+var defaultDate, minTime, maxTime time.Time
 
 func doFolderRename(f, s string, o int, c bool, b string, a bool) (int, error) {
 
@@ -60,7 +60,7 @@ func doFolderRename(f, s string, o int, c bool, b string, a bool) (int, error) {
 		return changed, nil
 	}
 
-	err = folderRename(f, fi, defaultDate, suffix)
+	err = folderRename(f, fi, minTime, suffix)
 	if err != nil {
 		return changed, err
 	}
@@ -97,6 +97,9 @@ func doPhotoRename(path string, fileInfo os.FileInfo, err error) error {
 	}
 
 	pDateTime := fileInfo.ModTime()
+	if !defaultDate.IsZero() {
+		pDateTime = defaultDate
+	}
 	if exif, err := exif.Decode(f); err == nil && exif != nil {
 		pDateTime, _ = exif.DateTime()
 	} else {
@@ -106,6 +109,15 @@ func doPhotoRename(path string, fileInfo os.FileInfo, err error) error {
 	if timeOffset != 0 {
 		pDateTime = pDateTime.Add(timeOffset)
 	}
+
+	if pDateTime.After(maxTime) {
+		maxTime = pDateTime
+	}
+	if pDateTime.Before(minTime) || minTime.IsZero() {
+		minTime = pDateTime
+	}
+
+	//log.Printf("!!! time/ Max: %q Min %q Current %q\n", maxTime, minTime, pDateTime)
 
 	newName, err := findFileName(filepath.Dir(path), fileInfo.Name(), pDateTime, suffix)
 	if err != nil {
@@ -146,13 +158,11 @@ func folderRename(path string, fi os.FileInfo, pDateTime time.Time, suffix strin
 func findFolderName(path, name string, pDateTime time.Time, suffix string) (string, error) {
 
 	parentFolder := filepath.Dir(path)
-	t := pDateTime.Format("20060102")
+	t := pDateTime.Format("2006-01-02")
 	if suffix != "" {
 		t += "-" + suffix
 	}
 	t += filepath.Ext(name)
-
-	log.Printf(" +++++ parentFolder: [%s], name = [%s], new [%s], path[%s]\n", parentFolder, name, t, path)
 
 	if name == t {
 		return t, nil
@@ -164,7 +174,7 @@ func findFolderName(path, name string, pDateTime time.Time, suffix string) (stri
 	}
 
 	// the name already exist, and we need to do something.
-	t = parentFolder + "/" + pDateTime.Format("20060102")
+	t = parentFolder + "/" + pDateTime.Format("2006-01-02")
 	if suffix != "" {
 		t += "-" + suffix
 	}
