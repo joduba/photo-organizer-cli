@@ -19,12 +19,13 @@ var extensions = map[string]bool{
 }
 
 var changed = 0
-var suffix, basedir, operation string
+var suffix, basedir string
 var timeOffset time.Duration
 var classify = false
 var dstFolders map[string]bool
+var defaultDate time.Time
 
-func doFolderRename(f, s string, o int, c bool, b string) (int, error) {
+func doFolderRename(f, s string, o int, c bool, b string, a bool) (int, error) {
 
 	fmt.Printf("-- Renaming images in folder '%s' with suffix [%s] and offset [%d]...\n", f, s, o)
 	timeOffset = time.Duration(o) * time.Hour
@@ -36,12 +37,34 @@ func doFolderRename(f, s string, o int, c bool, b string) (int, error) {
 	classify = c
 	dstFolders = make(map[string]bool)
 
-	err := filepath.Walk(f, doPhotoRename)
+	fi, err := os.Stat(f)
+	if err != nil {
+		return changed, fmt.Errorf("an error ocurred while accessing the main folder path %q:\n %v", f, err)
+	}
+
+	if fi.IsDir() == false {
+		return changed, fmt.Errorf("folder provide is not a folder %q:\n %v", f, err)
+	}
+
+	if a == true {
+		suffix, defaultDate = ProcessFolder(fi.Name())
+		log.Printf(" Auto is on, detected suffix: [%s] and default date: [%v]\n", suffix, defaultDate)
+	}
+
+	err = filepath.Walk(f, doPhotoRename)
 	if err != nil {
 		return changed, err
 	}
 
-	fmt.Println()
+	if a == false {
+		return changed, nil
+	}
+
+	err = folderRename(f, fi, defaultDate, suffix)
+	if err != nil {
+		return changed, err
+	}
+
 	return changed, nil
 
 }
@@ -84,7 +107,7 @@ func doPhotoRename(path string, fileInfo os.FileInfo, err error) error {
 		pDateTime = pDateTime.Add(timeOffset)
 	}
 
-	newName, err := findName(filepath.Dir(path), fileInfo.Name(), pDateTime, suffix)
+	newName, err := findFileName(filepath.Dir(path), fileInfo.Name(), pDateTime, suffix)
 	if err != nil {
 		return fmt.Errorf("can find a new name for %s\n %v", path, err)
 	}
@@ -99,14 +122,68 @@ func doPhotoRename(path string, fileInfo os.FileInfo, err error) error {
 		return fmt.Errorf("change time issue for file: %s\n %v", path, err)
 	}
 	changed++
-	log.Printf("✓ %s from %s to: %s and CHTimes to %v\n", operation, path, newName, pDateTime)
+	log.Printf("✓ renamed from %s to: %s and CHTimes to %v\n", path, newName, pDateTime)
 
 	return nil
 }
 
-func findName(path, name string, pDateTime time.Time, suffix string) (string, error) {
-	ftime := pDateTime.Format("20060102-150405")
-	t := ftime + "-%03d"
+func folderRename(path string, fi os.FileInfo, pDateTime time.Time, suffix string) error {
+
+	newName, err := findFolderName(path, fi.Name(), pDateTime, suffix)
+	if err != nil {
+		return fmt.Errorf("can find a new name for main folder %s\n %v", path, err)
+	}
+	// No need to rename if the new name == oldname
+	if path != newName {
+		if err = os.Rename(path, newName); err != nil {
+			return fmt.Errorf("can't rename the folder %s\n %v", path, err)
+		}
+		log.Printf("✓ renamed main folder %v -> %v\n", path, newName)
+	}
+	return nil
+}
+
+func findFolderName(path, name string, pDateTime time.Time, suffix string) (string, error) {
+
+	parentFolder := filepath.Dir(path)
+	t := pDateTime.Format("20060102")
+	if suffix != "" {
+		t += "-" + suffix
+	}
+	t += filepath.Ext(name)
+
+	log.Printf(" +++++ parentFolder: [%s], name = [%s], new [%s], path[%s]\n", parentFolder, name, t, path)
+
+	if name == t {
+		return t, nil
+	}
+
+	t = parentFolder + "/" + t
+	if _, err := os.Stat(t); err != nil {
+		return t, nil
+	}
+
+	// the name already exist, and we need to do something.
+	t = parentFolder + "/" + pDateTime.Format("20060102")
+	if suffix != "" {
+		t += "-" + suffix
+	}
+	t += "-%02d" + filepath.Ext(name)
+
+	for c := 1; true; c++ {
+		new := fmt.Sprintf(t, c)
+		if path == new {
+			return new, nil
+		}
+		if _, err := os.Stat(new); err != nil {
+			return new, nil
+		}
+	}
+	return "", fmt.Errorf("x Could not find available filename for: %s", name)
+}
+
+func findFileName(path, name string, pDateTime time.Time, suffix string) (string, error) {
+	t := pDateTime.Format("20060102-150405") + "-%03d"
 	if suffix != "" {
 		t += "-" + suffix
 	}
